@@ -10,3 +10,14 @@ In this project, we aim to tackle some NP-Hard/Compelete problems using customiz
 
 Problem:
 Travelling salesman in a maze environment
+
+
+Overall method:
+Use Floyd Warshall algorithm to get the shortest path between any two target locations, which extracts a high-level map for the travelling salesman problem.
+
+
+Heuristics in MCTS:
+
+Only expand the current node using the K nearest target
+
+

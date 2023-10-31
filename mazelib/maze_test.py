@@ -10,6 +10,6 @@ def showPNG(grid):
 
 
 m = Maze()
-m.generator = Prims(27, 34)
+m.generator = Prims(40, 40)
 m.generate()
 showPNG(m.grid)
