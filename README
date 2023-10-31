@@ -7,3 +7,6 @@ Hanwen Ren
 
 Brief:
 In this project, we aim to tackle some NP-Hard/Compelete problems using customized Monte Carlo Tree Search and get high-quality and near optimal solutions.
+
+Problem:
+Travelling salesman in a maze environment
