@@ -1,7 +1,9 @@
 import os
 import sys
+import bisect
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 def showPNG(grid):
 	plt.figure(figsize=(10, 5))
@@ -85,8 +87,68 @@ def graph_extraction(maze, stop_loc):
 		for temp_i, temp_j in path[:-1]:
 			vis_maze[temp_i][temp_j] = 3
 	
-		showPNG(vis_maze)
+		#showPNG(vis_maze)
+
+	random_baseline_path = random_baseline_solver(graph, stop_loc)
+
+	path_visualizer(maze, random_baseline_path, graph)
 	
+def random_baseline_solver(graph, stop_loc):
+	plan = [stop_loc[0]]
+	remain_stop = stop_loc[1:]
+	plan_index = np.random.choice([_ for _ in range(len(remain_stop))], len(remain_stop), replace = False)
+	for index in plan_index:
+		plan.append(remain_stop[index])
+	plan.append(stop_loc[0])
+	return plan
+
+def path_visualizer(maze, path, graph):
+	
+	#plt.figure(figsize=(10, 5))
+	#plt.imshow(grid, cmap='hot', interpolation='nearest')
+	#plt.xticks([]), plt.yticks([])
+	#plt.show()
+
+	detailed_path = []
+	path_length_index = [0]
+	path_length = [0]
+	accu = 0
+	for i in range(len(path)-1):
+		src_loc = path[i]
+		tar_loc = path[i+1]
+		detailed_path += graph[src_loc][tar_loc]
+		accu += len(graph[src_loc][tar_loc])
+		path_length.append(accu)
+
+	delta_color = [10/(len(path_length) + 5)]
+	print(delta_color)
+
+	fig = plt.figure(figsize=(10, 10))
+	im = plt.imshow(maze, cmap='hot', interpolation='nearest')
+
+	fps = 30
+	nSeconds = 500
+	
+	vis_maze = np.array(maze)
+	current_color = delta_color[:]
+
+	def animate_func(i):
+
+
+		if i >= len(detailed_path):
+			im.set_array(vis_maze)
+		else:
+			temp_i, temp_j = detailed_path[i]
+			if (temp_i, temp_j) not in path:
+				vis_maze[temp_i][temp_j] = 3
+
+
+		im.set_array(vis_maze)
+
+	anim = animation.FuncAnimation(fig, animate_func, frames = nSeconds * fps, interval = 10/fps)
+	
+	plt.show()
+
 
 
 
