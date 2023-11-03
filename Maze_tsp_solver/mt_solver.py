@@ -77,9 +77,6 @@ def graph_extraction(maze, stop_loc):
 		remain_loc = stop_loc[:i] + stop_loc[i+1:]
 		uniform_cost_search(maze, src_loc, remain_loc, graph)
 
-	print(len(graph[stop_loc[0]]))
-	
-
 	#check path
 	for target in graph[stop_loc[0]]:
 		vis_maze = np.array(maze)
@@ -89,10 +86,49 @@ def graph_extraction(maze, stop_loc):
 	
 		#showPNG(vis_maze)
 
-	random_baseline_path = random_baseline_solver(graph, stop_loc)
+	random_baseline_path, random_cost = random_baseline_solver(graph, stop_loc)
 
-	path_visualizer(maze, random_baseline_path, graph)
+	#path_visualizer(maze, random_baseline_path, graph)
+
+	print('Total cost of random policy is: {0}'.format(random_cost))
+
+	greedy_baseline_path, greedy_cost = greedy_baseline_solver(graph, stop_loc)
+
+	#path_visualizer(maze, greedy_baseline_path)
+
+	print('Total cost of greedy policy is: {0}'.format(greedy_cost))
 	
+def greedy_baseline_solver(graph, stop_loc):
+	plan = [stop_loc[0]]
+	visited = set()
+	visited.add(stop_loc[0])
+	current = stop_loc[0]
+
+
+	while len(visited) != len(stop_loc):
+		nearest_cost = sys.maxsize
+		nearest_node = None
+		for key, value in graph[current].items():
+			if key not in visited:
+				if len(value) < nearest_cost:
+					nearest_cost = len(graph[current][key])
+					nearest_node = key
+		current = nearest_node
+		plan.append(nearest_node)
+		visited.add(nearest_node)
+	
+	cost = 0
+	for i in range(len(plan)-1):
+		src = plan[i]
+		tar = plan[i+1]
+		
+		cost += len(graph[src][tar])
+	
+	return plan, cost
+	
+
+	
+
 def random_baseline_solver(graph, stop_loc):
 	plan = [stop_loc[0]]
 	remain_stop = stop_loc[1:]
@@ -100,7 +136,15 @@ def random_baseline_solver(graph, stop_loc):
 	for index in plan_index:
 		plan.append(remain_stop[index])
 	plan.append(stop_loc[0])
-	return plan
+
+	cost = 0
+	for i in range(len(plan)-1):
+		src = plan[i]
+		tar = plan[i+1]
+
+		cost += len(graph[src][tar])
+
+	return plan, cost
 
 def path_visualizer(maze, path, graph):
 	

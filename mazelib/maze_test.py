@@ -75,10 +75,14 @@ def region_growing(grid):
 
 def save_grid(size):
 	m = Maze()
-	m.generator = Prims(size, size)
+	m.generator = Prims(10, 10)
 	m.generate()
 	grid = m.grid
 	print(type(grid))
+	
+	showPNG(grid)
+
+	sys.exit(1)
 
 	region_growing(grid)
 
