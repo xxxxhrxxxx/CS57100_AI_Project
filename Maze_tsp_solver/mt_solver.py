@@ -13,6 +13,75 @@ def showPNG(grid):
 	plt.xticks([]), plt.yticks([])
 	plt.show()
 
+def randomize_maze_weight(maze):
+	m, n = maze.shape
+	for i in range(m):
+		for j in range(n):
+			if maze[i][j] >= 1:
+				maze[i][j] = random.randint(1, 10)
+
+def uniform_cost_search_weight(maze, src_loc, stop_loc, graph):
+	start = [[src_loc, []]]
+	cost_arr = [0]
+	visited = set()
+	graph[src_loc] = {}
+
+	m, n = maze.shape
+
+	target_size = len(stop_loc)
+
+	while start:
+		temp_start, current_path = start.pop(0)
+		temp_i, temp_j = temp_start
+		current_cost = cost_arr.pop(0)
+		visited.add(temp_start)
+			
+		if temp_start in stop_loc:
+			graph[src_loc][temp_start] = [current_path, current_cost]
+			if len(graph[src_loc]) == target_size:
+				break
+
+		search_order = np.random.choice([0, 1, 2, 3], 4, replace = False)
+
+		for k in search_order:
+			#up
+			if k == 0:
+				new_i = max(temp_i - 1, 0)
+				if new_i != temp_i:
+					if maze[new_i][temp_j] >= 1 and (new_i, temp_j) not in visited:
+						new_cost = current_cost + maze[new_i][temp_j]
+						temp_index = bisect.bisect_right(cost_arr, new_cost)
+						cost_arr.insert(temp_index, new_cost)
+						start.insert(temp_index, [(new_i, temp_j), current_path[:] + [(new_i, temp_j)]])
+			#down
+			elif k == 1:
+				new_i = min(temp_i + 1, m - 1)
+				if new_i != temp_i:
+					if maze[new_i][temp_j] >= 1 and (new_i, temp_j) not in visited:
+						new_cost = current_cost + maze[new_i][temp_j]
+						temp_index = bisect.bisect_right(cost_arr, new_cost)
+						cost_arr.insert(temp_index, new_cost)
+						start.insert(temp_index, [(new_i, temp_j), current_path[:] + [(new_i, temp_j)]])
+			#left
+			elif k == 2:
+				new_j = max(temp_j - 1, 0)
+				if new_j != temp_j:
+					if maze[temp_i][new_j] >= 1 and (temp_i, new_j) not in visited:
+						new_cost = current_cost + maze[temp_i][new_j]
+						temp_index = bisect.bisect_right(cost_arr, new_cost)
+						cost_arr.insert(temp_index, new_cost)
+						start.insert(temp_index, [(temp_i, new_j), current_path[:] + [(temp_i, new_j)]])
+			#right
+			else:
+				new_j = min(temp_j + 1, n-1)
+				if new_j != temp_j:
+					if maze[temp_i][new_j] >= 1 and (temp_i, new_j) not in visited:
+						new_cost = current_cost + maze[temp_i][new_j]
+						temp_index = bisect.bisect_right(cost_arr, new_cost)
+						cost_arr.insert(temp_index, new_cost)
+						start.insert(temp_index, [(temp_i, new_j), current_path[:] + [(temp_i, new_j)]])
+		
+
 #uniform cost search for shortest path
 def uniform_cost_search(maze, src_loc, stop_loc, graph):
 	#basically bfs in the current setting
@@ -31,7 +100,7 @@ def uniform_cost_search(maze, src_loc, stop_loc, graph):
 			temp_i, temp_j = temp_start
 
 			if (temp_i, temp_j) in stop_loc:
-				graph[src_loc][temp_start] = current_path
+				graph[src_loc][temp_start] = [current_path, len(current_path)]
 
 			search_order = np.random.choice([0, 1, 2, 3], 4, replace = False)
 			
@@ -69,9 +138,59 @@ def uniform_cost_search(maze, src_loc, stop_loc, graph):
 
 		start = new_start
 
+def graph_extraction_test2(maze, stop_loc):
+	#test2: different cost at different loc + can reuse previous loc
+	graph = {}
+
+	randomize_maze_weight(maze)
+
+	for i in range(len(stop_loc)):
+		src_loc = stop_loc[i]
+		remain_loc = stop_loc[:i] + stop_loc[i+1:]
+		uniform_cost_search_weight(maze, src_loc, remain_loc, graph)
+
+	#check path
+	for target in graph[stop_loc[0]]:
+		vis_maze = np.array(maze)
+		path = graph[stop_loc[0]][target]
+		for temp_i, temp_j in path[0][:-1]:
+			vis_maze[temp_i][temp_j] = 3
+	
+		#showPNG(vis_maze)
+
+	#start random baseline*******************************************************
+	random_baseline_path, random_cost = random_baseline_solver(graph, stop_loc)
+
+	#path_visualizer(maze, random_baseline_path, graph)
+
+	print('Total cost of random policy is: {0}'.format(random_cost))
+	#end random baseline*********************************************************
+
+	#start greedy baseline*******************************************************
+	greedy_baseline_path, greedy_cost = greedy_baseline_solver(graph, stop_loc)
+
+	#path_visualizer(maze, greedy_baseline_path)
+
+	print(greedy_baseline_path)
+	print(len(greedy_baseline_path))
+	
+	print('Total cost of greedy policy is: {0}'.format(greedy_cost))
+	#end greedy baseline*********************************************************
+	
+	#MCTS_path, MCTS_cost = MCTS_solver(graph, stop_loc)
+
+	#path_visualizer(maze, MCTS_path)
+
+	#print(MCTS_path)
+	#print(len(MCTS_path))
+	
+	#print('Total cost of MCTS policy is: {0}'.format(MCTS_cost))
+
+
 
 #extract high-level graph
-def graph_extraction(maze, stop_loc):
+def graph_extraction_test1(maze, stop_loc):
+	#test1: uniform cost + can reuse previous loc
 	graph = {}
 
 	for i in range(len(stop_loc)):
@@ -83,7 +202,7 @@ def graph_extraction(maze, stop_loc):
 	for target in graph[stop_loc[0]]:
 		vis_maze = np.array(maze)
 		path = graph[stop_loc[0]][target]
-		for temp_i, temp_j in path[:-1]:
+		for temp_i, temp_j in path[0][:-1]:
 			vis_maze[temp_i][temp_j] = 3
 	
 		#showPNG(vis_maze)
@@ -316,8 +435,8 @@ def greedy_baseline_solver(graph, stop_loc):
 		nearest_node = None
 		for key, value in graph[current].items():
 			if key not in visited:
-				if len(value) < nearest_cost:
-					nearest_cost = len(graph[current][key])
+				if value[1] < nearest_cost:
+					nearest_cost = value[1]
 					nearest_node = key
 		current = nearest_node
 		plan.append(nearest_node)
@@ -329,7 +448,7 @@ def greedy_baseline_solver(graph, stop_loc):
 		src = plan[i]
 		tar = plan[i+1]
 		
-		cost += len(graph[src][tar])
+		cost += graph[src][tar][1]
 	
 	return plan, cost
 	
@@ -349,7 +468,7 @@ def random_baseline_solver(graph, stop_loc):
 		src = plan[i]
 		tar = plan[i+1]
 
-		cost += len(graph[src][tar])
+		cost += graph[src][tar][1]
 
 	return plan, cost
 
@@ -400,10 +519,8 @@ def path_visualizer(maze, path, graph):
 	
 	plt.show()
 
-
-
-
 def load_maze(maze_file_path):
+	#case1: uniform cost + can reuse previous loc
 	maze = None
 	with open(maze_file_path, 'rb') as f:
 		maze = np.load(f)
@@ -435,10 +552,13 @@ def load_maze(maze_file_path):
 	maze[stop_loc[0][0]][stop_loc[0][1]] = 10
 	#showPNG(maze)
 
-	graph_extraction(maze, stop_loc)	
+	#graph_extraction_test1(maze, stop_loc)	
+	graph_extraction_test2(maze, stop_loc)	
 
 if __name__ == '__main__':
 	maze_file_path = 'maze_envs/large_maze.npy'
 
 	load_maze(maze_file_path)
+
+	
 	
