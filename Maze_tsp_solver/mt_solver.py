@@ -142,7 +142,7 @@ def graph_extraction_test2(maze, stop_loc):
 	#test2: different cost at different loc + can reuse previous loc
 	graph = {}
 
-	randomize_maze_weight(maze)
+	#randomize_maze_weight(maze)
 
 	for i in range(len(stop_loc)):
 		src_loc = stop_loc[i]
@@ -171,20 +171,22 @@ def graph_extraction_test2(maze, stop_loc):
 
 	#path_visualizer(maze, greedy_baseline_path)
 
-	print(greedy_baseline_path)
-	print(len(greedy_baseline_path))
+	#print(greedy_baseline_path)
+	#print(len(greedy_baseline_path))
 	
 	print('Total cost of greedy policy is: {0}'.format(greedy_cost))
 	#end greedy baseline*********************************************************
 	
-	#MCTS_path, MCTS_cost = MCTS_solver(graph, stop_loc)
+	MCTS_path, MCTS_cost = MCTS_solver(graph, stop_loc)
 
-	#path_visualizer(maze, MCTS_path)
+	path_visualizer_static(maze, MCTS_path, graph)
 
 	#print(MCTS_path)
 	#print(len(MCTS_path))
 	
-	#print('Total cost of MCTS policy is: {0}'.format(MCTS_cost))
+	print('Total cost of MCTS policy is: {0}'.format(MCTS_cost))
+
+	return random_cost, greedy_cost, MCTS_cost
 
 
 
@@ -228,7 +230,7 @@ def graph_extraction_test1(maze, stop_loc):
 	
 	MCTS_path, MCTS_cost = MCTS_solver(graph, stop_loc)
 
-	#path_visualizer(maze, MCTS_path)
+	#path_visualizer_static(maze, MCTS_path)
 
 	print(MCTS_path)
 	print(len(MCTS_path))
@@ -253,27 +255,27 @@ class MCTS_treenode:
 	def gen_next_loc(self):
 		#for all loc in remain, get the average distance
 		#first try to pure strategy
-		max_expansion = 1
+		max_expansion = 3
 		distance_arr = []
 
 		#add a nearest heursitic
 		tracker = {}
 
-		alpha = 0.1
+		alpha = 0.2
 
 		for loc in self.remain_loc_:
 			total_distance = 0.0
 			total_count = 0.0
-			tracker[loc] = len(self.graph_[self.current_][loc])
+			tracker[loc] = self.graph_[self.current_][loc][1]
 			for key,value in self.graph_[loc].items():
 				if key not in self.visited_:
-					total_distance += len(value)
+					total_distance += value[1]
 					total_count += 1.0
 			if total_count != 0:
 				tracker[loc] += -alpha * total_distance * 1.0/total_count
 				tracker[loc] += 0
 			else:
-				tracker[loc] += sys.maxsize
+				tracker[loc] = sys.maxsize
 		
 		distance_arr = []
 		for key, value in tracker.items():
@@ -281,7 +283,7 @@ class MCTS_treenode:
 		#distance_arr.sort(key = lambda x : x[0], reverse = True)
 		distance_arr.sort(key = lambda x : x[0], reverse = False)
 		res = [x[1] for x in distance_arr[:max_expansion]]
-		random.shuffle(res)
+		#random.shuffle(res)
 		return res
 
 	def get_ucb_value(self):
@@ -336,7 +338,7 @@ def MCTS_expansion(current_node, graph):
 			print('next candidates cannot be found in the expansion module!')
 			sys.exit(1)
 		stop_loc_set.remove(can)
-		updated_cost = current_cost + len(graph[current_node.current_][can])
+		updated_cost = current_cost + graph[current_node.current_][can][1]
 		new_treenode = MCTS_treenode(current_path + [can], list(stop_loc_set), graph, updated_cost)
 		stop_loc_set.add(can)
 		
@@ -357,7 +359,7 @@ def MCTS_rollout(current_node, graph):
 
 		next_can = start_node.gen_next_loc()[0]
 		stop_loc_set.remove(next_can)
-		update_cost = current_cost + len(graph[start_node.current_][next_can])
+		update_cost = current_cost + graph[start_node.current_][next_can][1]
 		new_treenode = MCTS_treenode(current_path + [next_can], list(stop_loc_set), graph, update_cost)
 	
 		#update tree structure
@@ -368,7 +370,7 @@ def MCTS_rollout(current_node, graph):
 
 def MCTS_backprop(current_node, graph, start_node):
 	current_cost = current_node.current_cost_
-	current_cost += len(graph[current_node.current_][start_node])
+	current_cost += graph[current_node.current_][start_node][1]
 	while current_node:
 		current_node.reward_ += - current_cost
 		current_node.count_ += 1
@@ -401,14 +403,14 @@ def MCTS_solver(graph, stop_loc):
 			
 			for t in range(len(temp_path)-1):
 				src, tar = temp_path[t], temp_path[t+1]
-				temp_cost += len(graph[src][tar])
+				temp_cost += graph[src][tar][1]
 			
 			if temp_cost < final_cost:
 				final_cost = temp_cost
 				final_path = temp_path
 
 			res_count += 1
-			if res_count > 5: break
+			if res_count > 0: break
 		rollout_node = selected_node
 		if selected_node.count_ != 0.0:
 			rollout_node = MCTS_expansion(selected_node, graph)
@@ -472,6 +474,18 @@ def random_baseline_solver(graph, stop_loc):
 
 	return plan, cost
 
+def path_visualizer_static(maze, path, graph):
+
+	print('here')
+	for i in range(len(path)-1):
+		src_loc = path[i]
+		tar_loc = path[i+1]
+		for element in graph[src_loc][tar_loc][0][1:-1]:
+			temp_x, temp_y = element
+			maze[temp_x][temp_y] = 3
+	
+	showPNG(maze)
+
 def path_visualizer(maze, path, graph):
 	
 	#plt.figure(figsize=(10, 5))
@@ -487,7 +501,7 @@ def path_visualizer(maze, path, graph):
 		src_loc = path[i]
 		tar_loc = path[i+1]
 		detailed_path += graph[src_loc][tar_loc]
-		accu += len(graph[src_loc][tar_loc])
+		accu += graph[src_loc][tar_loc][1]
 		path_length.append(accu)
 
 	delta_color = [10/(len(path_length) + 5)]
@@ -550,15 +564,46 @@ def load_maze(maze_file_path):
 		stop_loc.append((temp_i, temp_j))
 	
 	maze[stop_loc[0][0]][stop_loc[0][1]] = 10
-	#showPNG(maze)
+	showPNG(maze)
 
 	#graph_extraction_test1(maze, stop_loc)	
-	graph_extraction_test2(maze, stop_loc)	
+	random_cost, greedy_cost, MCTS_cost = graph_extraction_test2(maze, stop_loc)	
+	return random_cost, greedy_cost, MCTS_cost
+
+def write_results(random_cost, greedy_cost, MCTS_cost, filename):
+	with open(filename, 'w') as f:
+		f.write(str(random_cost) + '\n')
+		f.write(str(greedy_cost) + '\n')
+		f.write(str(MCTS_cost) + '\n')
+	f.close()
 
 if __name__ == '__main__':
-	maze_file_path = 'maze_envs/large_maze.npy'
-
-	load_maze(maze_file_path)
-
 	
+	for t in range(1, 101):
+		maze_file_path = 'maze_envs/small_maze_' + str(t) + '.npy'
+
+		random_cost, greedy_cost, MCTS_cost = load_maze(maze_file_path)
+
+		write_results(random_cost, greedy_cost, MCTS_cost, 'test_results/config31/small_maze_' + str(t) + '.txt')
+
+		print(t)
+
+	for t in range(1, 101):
+		maze_file_path = 'maze_envs/medium_maze_' + str(t) + '.npy'
+
+		random_cost, greedy_cost, MCTS_cost = load_maze(maze_file_path)
+
+		write_results(random_cost, greedy_cost, MCTS_cost, 'test_results/config31/medium_maze_' + str(t) + '.txt')
+
+		print(t)
+
+	for t in range(1, 101):
+		maze_file_path = 'maze_envs/large_maze_' + str(t) + '.npy'
+
+		random_cost, greedy_cost, MCTS_cost = load_maze(maze_file_path)
+
+		write_results(random_cost, greedy_cost, MCTS_cost, 'test_results/config33/large_maze_' + str(t) + '.txt')
+
+		print(t)
+
 	
